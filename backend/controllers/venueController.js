@@ -3,8 +3,31 @@ const { VENUE_TYPE_ENUM } = require('../models/Venue');
 const { cloudinary } = require('../middleware/uploadMiddleware');
 
 const MAX_PRICE_LKR = 500_000;
+const ONLY_DIGITS = /^\d+$/;
 
 const inPriceRange = (n) => typeof n === 'number' && !Number.isNaN(n) && n >= 0 && n <= MAX_PRICE_LKR;
+
+/** @returns {string|null} */
+function validateVenueContent({ name, location, amenities, photoCount }) {
+  const n = String(name || '').trim();
+  if (!n) return 'Venue name is required.';
+  if (n.length < 3) return 'Venue name must be at least 3 characters.';
+  if (n.length > 100) return 'Venue name cannot exceed 100 characters.';
+  if (ONLY_DIGITS.test(n)) return 'Venue name cannot consist only of numbers.';
+
+  const addr = String(location?.address || '').trim();
+  if (!addr) return 'Address is required.';
+  if (addr.length < 5) return 'Please enter a complete address.';
+  if (ONLY_DIGITS.test(addr)) return 'Address cannot consist only of numbers.';
+
+  const am = amenities || [];
+  if (!Array.isArray(am) || !am.length) return 'At least one amenity is required.';
+
+  const pc = Number(photoCount);
+  if (!Number.isFinite(pc) || pc < 1) return 'At least one photo is required.';
+
+  return null;
+}
 
 const parseTypes = (raw, legacyType) => {
   let list = [];
@@ -110,6 +133,23 @@ exports.createVenue = async (req, res) => {
       publicId: f.filename,
     }));
 
+    const location =
+      parseLocation(req.body.location) || {
+        address: req.body.address,
+        city: req.body.city,
+        state: req.body.state,
+        country: req.body.country,
+      };
+    const amenitiesArr = parseAmenities(req.body.amenities);
+
+    const contentErr = validateVenueContent({
+      name,
+      location,
+      amenities: amenitiesArr,
+      photoCount: photos.length,
+    });
+    if (contentErr) return res.status(400).json({ message: contentErr });
+
     const dayNum = Number(pricePerDay);
     const halfNum = pricePerHalfDay != null && pricePerHalfDay !== '' ? Number(pricePerHalfDay) : 0;
     if (!inPriceRange(dayNum)) {
@@ -132,13 +172,8 @@ exports.createVenue = async (req, res) => {
       pricePerHalfDay: halfNum,
       openTime: openTime != null && String(openTime).trim() ? String(openTime).trim() : '09:00',
       closeTime: closeTime != null && String(closeTime).trim() ? String(closeTime).trim() : '18:00',
-      location: parseLocation(req.body.location) || {
-        address: req.body.address,
-        city: req.body.city,
-        state: req.body.state,
-        country: req.body.country,
-      },
-      amenities: parseAmenities(req.body.amenities),
+      location,
+      amenities: amenitiesArr,
       photos,
       createdBy: req.user?._id,
     });
@@ -198,6 +233,15 @@ exports.updateVenue = async (req, res) => {
       venue.photos = [...venue.photos, ...newPhotos];
     }
 
+    const locPlain = venue.location?.toObject ? venue.location.toObject() : venue.location;
+    const contentErr = validateVenueContent({
+      name: venue.name,
+      location: locPlain,
+      amenities: venue.amenities,
+      photoCount: (venue.photos || []).length,
+    });
+    if (contentErr) return res.status(400).json({ message: contentErr });
+
     const updated = await venue.save();
     return res.json(normalizeVenue(updated));
   } catch (err) {
@@ -229,6 +273,12 @@ exports.removeVenuePhoto = async (req, res) => {
   try {
     const venue = await Venue.findById(req.params.id);
     if (!venue) return res.status(404).json({ message: 'Venue not found' });
+
+    if (!venue.photos || venue.photos.length <= 1) {
+      return res.status(400).json({
+        message: 'At least one photo is required. Upload a new photo before removing this one.',
+      });
+    }
 
     const photo = venue.photos.id(req.params.photoId);
     if (!photo) return res.status(404).json({ message: 'Photo not found' });

@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import theme from '../../theme';
 import {
@@ -45,15 +45,23 @@ const emptyForm = {
 
 const ONLY_DIGITS = /^\d+$/;
 
-function validateCateringForm(form) {
+function validateCateringForm(form, ctx = {}) {
+  const {
+    newImageCount = 0,
+    existingImageCount = 0,
+    availableVenueCount = 0,
+  } = ctx;
   const errors = {};
+  const nameTrim = form.name.trim();
 
-  if (!form.name.trim()) {
+  if (!nameTrim) {
     errors.name = 'Package name is required.';
-  } else if (form.name.trim().length < 3) {
+  } else if (nameTrim.length < 3) {
     errors.name = 'Package name must be at least 3 characters.';
-  } else if (form.name.trim().length > 80) {
+  } else if (nameTrim.length > 80) {
     errors.name = 'Package name cannot exceed 80 characters.';
+  } else if (ONLY_DIGITS.test(nameTrim)) {
+    errors.name = 'Package name cannot consist only of numbers.';
   }
 
   if (form.cuisine.trim() && form.cuisine.trim().length < 2) {
@@ -62,8 +70,16 @@ function validateCateringForm(form) {
     errors.cuisine = 'Cuisine cannot be only numbers.';
   }
 
-  if (form.description.trim() && form.description.trim().length < 10) {
-    errors.description = 'Description should be at least 10 characters if provided.';
+  if (!form.description.trim()) {
+    errors.description = 'Description is required.';
+  }
+
+  const menuParts = String(form.menuItems || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!menuParts.length) {
+    errors.menuItems = 'At least one menu item is required.';
   }
 
   const MAX_PRICE_LKR = 500_000;
@@ -81,17 +97,27 @@ function validateCateringForm(form) {
     }
   }
 
-  if (form.minServings.trim()) {
-    if (!ONLY_DIGITS.test(form.minServings.trim())) {
-      errors.minServings = 'Min servings must be a whole number.';
-    } else {
-      const min = Number(form.minServings);
-      if (min < 1) {
-        errors.minServings = 'Min servings must be at least 1.';
-      } else if (min > 10000) {
-        errors.minServings = 'Min servings seems too high (max 10,000).';
-      }
+  if (!form.minServings.trim()) {
+    errors.minServings = 'Min servings is required.';
+  } else if (!ONLY_DIGITS.test(form.minServings.trim())) {
+    errors.minServings = 'Min servings must be a whole number.';
+  } else {
+    const min = Number(form.minServings);
+    if (min < 1) {
+      errors.minServings = 'Min servings must be at least 1.';
+    } else if (min > 10000) {
+      errors.minServings = 'Min servings seems too high (max 10,000).';
     }
+  }
+
+  if (newImageCount + existingImageCount < 1) {
+    errors.images = 'At least one photo is required.';
+  }
+
+  if (availableVenueCount < 1) {
+    errors.venues = 'Add at least one venue before creating a catering package.';
+  } else if (!form.venues || form.venues.length < 1) {
+    errors.venues = 'Select at least one venue.';
   }
 
   return errors;
@@ -108,6 +134,8 @@ const FieldError = ({ message }) => {
 };
 
 export default function AdminCateringScreen() {
+  const route = useRoute();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState([]);
   const [availableVenues, setAvailableVenues] = useState([]);
@@ -142,7 +170,7 @@ export default function AdminCateringScreen() {
     }, [load])
   );
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setEditing(null);
     setForm(emptyForm);
     setImages([]);
@@ -150,7 +178,16 @@ export default function AdminCateringScreen() {
     setErrors({});
     setApiError('');
     setModalVisible(true);
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.openCreate === true) {
+        openCreate();
+        navigation.setParams({ openCreate: false });
+      }
+    }, [route.params?.openCreate, navigation, openCreate])
+  );
 
   const openEdit = (item) => {
     setEditing(item);
@@ -179,6 +216,7 @@ export default function AdminCateringScreen() {
   };
 
   const toggleVenue = (venueId) => {
+    setErrors((e) => (e.venues ? { ...e, venues: undefined } : e));
     setForm((f) => {
       const current = f.venues || [];
       if (current.includes(venueId)) {
@@ -208,6 +246,7 @@ export default function AdminCateringScreen() {
         mimeType: a.mimeType,
       }));
       setImages((prev) => [...prev, ...picked].slice(0, MAX_IMAGES));
+      setErrors((e) => (e.images ? { ...e, images: undefined } : e));
     }
   };
 
@@ -233,7 +272,11 @@ export default function AdminCateringScreen() {
   };
 
   const save = async () => {
-    const validationErrors = validateCateringForm(form);
+    const validationErrors = validateCateringForm(form, {
+      newImageCount: images.length,
+      existingImageCount: localExistingImages.length,
+      availableVenueCount: availableVenues.length,
+    });
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length) return;
 
@@ -244,7 +287,7 @@ export default function AdminCateringScreen() {
         description: form.description.trim(),
         cuisine: form.cuisine.trim(),
         pricePerPerson: Number(form.pricePerPerson),
-        minServings: Number(form.minServings || 10),
+        minServings: Number(form.minServings),
       };
       if (editing) {
         const updated = await updateCatering(editing._id, payload, images);
@@ -444,9 +487,11 @@ export default function AdminCateringScreen() {
             ))}
           </View>
 
+          {availableVenues.length === 0 ? <FieldError message={errors.venues} /> : null}
+
           <TextInput
             style={[styles.input, { height: 80 }, errors.description && styles.inputError]}
-            placeholder="Description"
+            placeholder="Description *"
             multiline
             value={form.description}
             onChangeText={(v) => updateField('description', v)}
@@ -454,11 +499,12 @@ export default function AdminCateringScreen() {
           <FieldError message={errors.description} />
 
           <TextInput
-            style={styles.input}
-            placeholder="Menu items (comma separated)"
+            style={[styles.input, errors.menuItems && styles.inputError]}
+            placeholder="Menu items (comma separated) *"
             value={form.menuItems}
             onChangeText={(v) => updateField('menuItems', v)}
           />
+          <FieldError message={errors.menuItems} />
 
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1, marginRight: 6 }}>
@@ -474,7 +520,7 @@ export default function AdminCateringScreen() {
             <View style={{ flex: 1, marginLeft: 6 }}>
               <TextInput
                 style={[styles.input, errors.minServings && styles.inputError]}
-                placeholder="Min servings"
+                placeholder="Min servings *"
                 keyboardType="numeric"
                 value={form.minServings}
                 onChangeText={(v) => updateField('minServings', v)}
@@ -485,8 +531,8 @@ export default function AdminCateringScreen() {
 
           {availableVenues.length > 0 && (
             <>
-              <Text style={styles.imageLabel}>Applicable Venues</Text>
-              <View style={styles.chipsRow}>
+              <Text style={styles.imageLabel}>Applicable Venues *</Text>
+              <View style={[styles.chipsRow, errors.venues && styles.chipsRowError]}>
                 {availableVenues.map((v) => {
                   const isActive = form.venues.includes(v._id);
                   return (
@@ -502,12 +548,13 @@ export default function AdminCateringScreen() {
                   );
                 })}
               </View>
+              <FieldError message={errors.venues} />
             </>
           )}
 
           {/* Images section */}
           <Text style={styles.imageLabel}>
-            Photos ({images.length}/{MAX_IMAGES})
+            Photos ({images.length}/{MAX_IMAGES}) *
           </Text>
 
           {/* Show existing images when editing and no new images picked */}
@@ -540,7 +587,11 @@ export default function AdminCateringScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.uploadBtn, images.length >= MAX_IMAGES && { opacity: 0.4 }]}
+            style={[
+              styles.uploadBtn,
+              errors.images && styles.uploadBtnError,
+              images.length >= MAX_IMAGES && { opacity: 0.4 },
+            ]}
             onPress={pickImages}
             disabled={images.length >= MAX_IMAGES}
           >
@@ -549,6 +600,7 @@ export default function AdminCateringScreen() {
               {images.length > 0 ? ' Add More Photos' : ' Pick Photos'}
             </Text>
           </TouchableOpacity>
+          <FieldError message={errors.images} />
 
           <TouchableOpacity style={styles.submit} onPress={save}>
             <Text style={styles.submitText}>Save</Text>
@@ -664,6 +716,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.sm },
+  chipsRowError: {
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -723,6 +782,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
+  },
+  uploadBtnError: {
+    borderColor: theme.colors.danger,
   },
   uploadText: { color: theme.colors.primary, fontWeight: '600' },
   submit: {

@@ -9,6 +9,7 @@ const venueRoutes = require('./routes/venueRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const cateringRoutes = require('./routes/cateringRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/venues', venueRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/catering', cateringRoutes);
+app.use('/api/users', userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });

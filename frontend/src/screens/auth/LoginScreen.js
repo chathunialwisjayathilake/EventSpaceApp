@@ -97,7 +97,7 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.brand}>EventSpace</Text>
+            <Text style={styles.brand}>Log in</Text>
             <Text style={styles.subtitle}>Welcome back. Sign in to continue.</Text>
 
             {apiError ? (

@@ -21,7 +21,7 @@ import { fetchCatering } from '../../api/cateringService';
 import ScreenContainer from '../../components/ScreenContainer';
 
 const QUICK_GAP = 12;
-const GRID_GAP = 12;
+const GRID_GAP = 45;
 
 const QuickActionCard = ({ icon, label, onPress, color, widthStyle }) => (
   <TouchableOpacity style={[styles.quickActionCard, widthStyle]} onPress={onPress} activeOpacity={0.92}>
@@ -167,8 +167,8 @@ export default function AdminDashboardScreen() {
           />
           <QuickActionCard
             icon="restaurant-outline"
-            label="Catering"
-            onPress={() => navigation.navigate('Catering')}
+            label="Add Catering"
+            onPress={() => navigation.navigate('Catering', { openCreate: true })}
             color={theme.colors.accent}
             widthStyle={{ width: quickCardWidth }}
           />
@@ -206,6 +206,14 @@ export default function AdminDashboardScreen() {
             onPress={() => navigation.navigate('Catering')}
             color={theme.colors.primary}
             bgColor="rgba(108, 92, 231, 0.15)"
+            widthStyle={{ width: gridCellWidth }}
+          />
+          <ManagementGridItem
+            icon="people-outline"
+            label="Users"
+            onPress={() => navigation.navigate('UserManagement')}
+            color="#6c5ce7"
+            bgColor="rgba(108, 92, 231, 0.12)"
             widthStyle={{ width: gridCellWidth }}
           />
         </View>
@@ -373,13 +381,12 @@ const styles = StyleSheet.create({
   gridWrapper: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: GRID_GAP,
     marginBottom: theme.spacing.lg,
   },
   gridItemContainer: {
     alignItems: 'center',
-    marginBottom: 12,
   },
   gridIconBox: {
     width: 60,

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -17,7 +18,8 @@ import theme from '../../theme';
 import { fetchCatering } from '../../api/cateringService';
 import { checkAvailability, createBooking, processPayment } from '../../api/bookingService';
 import PaymentModal from './PaymentModal';
-import { formatVenueOpenHours } from '../../utils/venueFormat';
+import { formatVenueOpenHours, formatVenueAddress, venueMapsSearchUrl } from '../../utils/venueFormat';
+import { getEventTypeChipsForVenue } from '../../constants/eventTypeOptions';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useHeaderHeight } from '@react-navigation/elements';
 
@@ -57,10 +59,15 @@ function validateBooking(form, venue, catering, selectedCatering) {
     }
   }
 
-  if (!form.eventType.trim()) {
-    errors.eventType = 'Event type is required (e.g. Wedding, Conference).';
-  } else if (form.eventType.trim().length < 3) {
-    errors.eventType = 'Event type must be at least 3 characters.';
+  if (!form.selectedEventType) {
+    errors.eventType = 'Please select an event type.';
+  } else if (form.selectedEventType === 'Other') {
+    const other = (form.otherEventType || '').trim();
+    if (!other) {
+      errors.eventType = 'Please describe your event.';
+    } else if (other.length < 3) {
+      errors.eventType = 'Description must be at least 3 characters.';
+    }
   }
 
   if (form.bookingType === 'half_day' && (!venue.pricePerHalfDay || Number(venue.pricePerHalfDay) <= 0)) {
@@ -105,7 +112,8 @@ export default function BookingScreen({ route, navigation }) {
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
   const [guestCount, setGuestCount] = useState('');
-  const [eventType, setEventType] = useState('');
+  const [selectedEventType, setSelectedEventType] = useState('');
+  const [otherEventType, setOtherEventType] = useState('');
   const [notes, setNotes] = useState('');
 
   const [catering, setCatering] = useState([]);
@@ -132,6 +140,8 @@ export default function BookingScreen({ route, navigation }) {
     })();
   }, [venue]);
 
+  const eventTypeChips = useMemo(() => getEventTypeChipsForVenue(venue), [venue]);
+
   const numberOfDays = useMemo(() => {
     const [y0, m0, d0] = toLocalYMD(startDate).split('-').map(Number);
     const [y1, m1, d1] = toLocalYMD(endDate).split('-').map(Number);
@@ -157,6 +167,11 @@ export default function BookingScreen({ route, navigation }) {
     }
   };
 
+  const effectiveEventType = useMemo(() => {
+    if (selectedEventType === 'Other') return otherEventType.trim();
+    return selectedEventType.trim();
+  }, [selectedEventType, otherEventType]);
+
   const verifyAvailability = async () => {
     if (endDate < startDate) {
       setErrors((e) => ({ ...e, dates: 'End date must be after start date.' }));
@@ -181,7 +196,15 @@ export default function BookingScreen({ route, navigation }) {
 
   const submit = async () => {
     const validationErrors = validateBooking(
-      { startDate, endDate, guestCount, eventType, selectedCatering, bookingType },
+      {
+        startDate,
+        endDate,
+        guestCount,
+        selectedEventType,
+        otherEventType,
+        selectedCatering,
+        bookingType,
+      },
       venue,
       catering,
       selectedCatering
@@ -198,7 +221,7 @@ export default function BookingScreen({ route, navigation }) {
         startDate: toLocalYMD(startDate),
         endDate: toLocalYMD(endDate),
         guestCount: Number(guestCount),
-        eventType: eventType.trim(),
+        eventType: effectiveEventType,
         notes: notes.trim(),
         bookingType,
         catering: Object.entries(selectedCatering)
@@ -270,6 +293,20 @@ export default function BookingScreen({ route, navigation }) {
             ? `LKR ${Number(venue.pricePerHalfDay).toLocaleString()}/half day`
             : 'Half-day rate not set'}
         </Text>
+        {formatVenueAddress(venue.location) ? (
+          <Text style={styles.venueMeta}>{formatVenueAddress(venue.location)}</Text>
+        ) : null}
+        {venueMapsSearchUrl(venue.location) ? (
+          <TouchableOpacity
+            style={styles.mapsLinkRow}
+            onPress={() => Linking.openURL(venueMapsSearchUrl(venue.location))}
+            accessibilityRole="link"
+            accessibilityLabel="Open location in maps"
+          >
+            <Ionicons name="map-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.mapsLinkText}>Open in maps</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <Text style={styles.section}>Booking type</Text>
         <View style={styles.typeRow}>
@@ -368,9 +405,9 @@ export default function BookingScreen({ route, navigation }) {
         )}
 
         <Text style={styles.section}>Event details</Text>
+        <Text style={styles.subLabel}>Guest Count</Text>
         <TextInput
           style={[styles.input, errors.guestCount && styles.inputError]}
-          placeholder="Guest count"
           keyboardType="numeric"
           value={guestCount}
           onChangeText={(v) => {
@@ -379,21 +416,42 @@ export default function BookingScreen({ route, navigation }) {
           }}
         />
         <FieldError message={errors.guestCount} />
+        <Text></Text>
 
-        <TextInput
-          style={[styles.input, errors.eventType && styles.inputError]}
-          placeholder="Event type (e.g. Wedding, Conference)"
-          value={eventType}
-          onChangeText={(v) => {
-            setEventType(v);
-            clearFieldError('eventType');
-          }}
-        />
+        <Text style={styles.subLabel}>Event type</Text>
+        <View style={[styles.typeRow, errors.eventType && styles.eventTypeGroupError]}>
+          {eventTypeChips.map((label) => (
+            <TouchableOpacity
+              key={label}
+              style={[styles.typeChip, selectedEventType === label && styles.typeChipActive]}
+              onPress={() => {
+                setSelectedEventType(label);
+                if (label !== 'Other') setOtherEventType('');
+                clearFieldError('eventType');
+              }}
+            >
+              <Text style={[styles.typeChipText, selectedEventType === label && styles.typeChipTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {selectedEventType === 'Other' ? (
+          <TextInput
+            style={[styles.input, errors.eventType && styles.inputError, styles.eventOtherInput]}
+            placeholder="Describe your event"
+            value={otherEventType}
+            onChangeText={(v) => {
+              setOtherEventType(v);
+              clearFieldError('eventType');
+            }}
+          />
+        ) : null}
         <FieldError message={errors.eventType} />
-
+        <Text></Text>
+        <Text style={styles.subLabel}>Notes (optional)</Text>
         <TextInput
           style={[styles.input, styles.notesInput]}
-          placeholder="Notes (optional)"
           multiline
           value={notes}
           onChangeText={setNotes}
@@ -466,6 +524,14 @@ const styles = StyleSheet.create({
   scrollContent: { padding: theme.spacing.lg, flexGrow: 1 },
   venueName: { ...theme.typography.h1, color: theme.colors.text },
   venueMeta: { color: theme.colors.muted, marginTop: 4 },
+  mapsLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  mapsLinkText: { color: theme.colors.primary, fontWeight: '600', fontSize: 14 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typeChip: {
     paddingVertical: 10,
@@ -478,6 +544,13 @@ const styles = StyleSheet.create({
   typeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   typeChipText: { color: theme.colors.text, fontWeight: '600' },
   typeChipTextActive: { color: '#fff' },
+  subLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.muted,
+    marginBottom: theme.spacing.sm,
+  },
+  eventTypeGroupError: { padding: 2, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.danger },
+  eventOtherInput: { marginTop: theme.spacing.sm },
   hintText: { ...theme.typography.caption, color: theme.colors.muted, marginTop: 4, lineHeight: 18 },
   section: {
     ...theme.typography.h3,

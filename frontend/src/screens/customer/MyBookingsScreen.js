@@ -173,6 +173,8 @@ export default function MyBookingsScreen() {
       errors.comment = 'Comment must be at least 10 characters.';
     } else if (reviewComment.trim().length > 500) {
       errors.comment = 'Comment cannot exceed 500 characters.';
+    } else if (/^\d+$/.test(reviewComment.trim().replace(/\s/g, ''))) {
+      errors.comment = 'Comment cannot consist of numbers only.';
     }
     return errors;
   };

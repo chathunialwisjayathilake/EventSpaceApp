@@ -19,12 +19,15 @@ import AddVenueScreen from '../screens/admin/AddVenueScreen';
 import AdminBookingsScreen from '../screens/admin/AdminBookingsScreen';
 import AdminReviewsScreen from '../screens/admin/AdminReviewsScreen';
 import AdminCateringScreen from '../screens/admin/AdminCateringScreen';
+import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 
 import CustomerHomeScreen from '../screens/customer/CustomerHomeScreen';
 import VenueDetailScreen from '../screens/customer/VenueDetailScreen';
 import BookingScreen from '../screens/customer/BookingScreen';
 import MyBookingsScreen from '../screens/customer/MyBookingsScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
+import EditProfileScreen from '../screens/customer/EditProfileScreen';
+import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -61,6 +64,7 @@ const AdminStack = () => (
     <Stack.Screen name="Bookings" component={AdminBookingsScreen} />
     <Stack.Screen name="Reviews" component={AdminReviewsScreen} />
     <Stack.Screen name="Catering" component={AdminCateringScreen} />
+    <Stack.Screen name="UserManagement" component={AdminUsersScreen} options={{ title: 'User Management' }} />
     <Stack.Screen
       name="AddVenue"
       component={AddVenueScreen}
@@ -140,6 +144,16 @@ const CustomerStack = () => (
       name="Booking"
       component={BookingScreen}
       options={{ title: 'Book Venue' }}
+    />
+    <Stack.Screen
+      name="EditProfile"
+      component={EditProfileScreen}
+      options={{ title: 'Edit Profile' }}
+    />
+    <Stack.Screen
+      name="HelpSupport"
+      component={HelpSupportScreen}
+      options={{ title: 'Help & Support' }}
     />
   </Stack.Navigator>
 );

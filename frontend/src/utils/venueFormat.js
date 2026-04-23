@@ -33,3 +33,17 @@ export function formatVenueTypes(venue) {
   if (venue.type) return String(venue.type);
   return 'Venue';
 }
+
+export function formatVenueAddress(location) {
+  if (!location) return '';
+  const parts = [location.address, location.city, location.state, location.country]
+    .map((p) => (p && String(p).trim()) || '')
+    .filter((p) => p && p.toUpperCase() !== 'N/A');
+  return parts.join(', ');
+}
+
+export function venueMapsSearchUrl(location) {
+  const q = formatVenueAddress(location);
+  if (!q) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}

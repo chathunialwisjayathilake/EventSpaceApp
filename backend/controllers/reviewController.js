@@ -1,12 +1,21 @@
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 
+const isCommentOnlyNumbers = (str) => {
+  const compact = str.trim().replace(/\s/g, '');
+  return compact.length > 0 && /^\d+$/.test(compact);
+};
+
 exports.createReview = async (req, res) => {
   try {
     const { bookingId, rating, comment } = req.body;
 
     if (!bookingId || !rating || !comment) {
       return res.status(400).json({ message: 'bookingId, rating and comment are required' });
+    }
+
+    if (isCommentOnlyNumbers(String(comment))) {
+      return res.status(400).json({ message: 'Comment cannot consist of numbers only.' });
     }
 
     const booking = await Booking.findById(bookingId);
@@ -42,8 +51,6 @@ exports.createReview = async (req, res) => {
 
     return res.status(201).json(populated);
   } catch (err) {
-    // Belt-and-braces: the unique index should prevent duplicates even if the
-    // findOne above races with a parallel request.
     if (err.code === 11000) {
       return res.status(400).json({ message: 'You have already reviewed this booking' });
     }
@@ -128,7 +135,12 @@ exports.updateReview = async (req, res) => {
 
     const { rating, comment } = req.body;
     if (rating !== undefined) review.rating = Number(rating);
-    if (comment !== undefined) review.comment = comment.trim();
+    if (comment !== undefined) {
+      if (isCommentOnlyNumbers(String(comment))) {
+        return res.status(400).json({ message: 'Comment cannot consist of numbers only.' });
+      }
+      review.comment = comment.trim();
+    }
 
     const updated = await review.save();
     const populated = await updated.populate([

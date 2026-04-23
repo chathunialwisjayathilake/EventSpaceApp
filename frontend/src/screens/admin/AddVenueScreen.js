@@ -23,15 +23,19 @@ import { timeStringToDate, dateToTimeString } from '../../utils/venueFormat';
 const ONLY_DIGITS = /^\d+$/;
 const VENUE_TYPE_OPTIONS = ['Event Hall', 'Meeting Room', 'Conference Room', 'Banquet Hall', 'Outdoor'];
 
-function validateVenueForm(form) {
+function validateVenueForm(form, ctx = {}) {
+  const { newPhotoCount = 0, existingPhotoCount = 0 } = ctx;
   const errors = {};
+  const nameTrim = form.name.trim();
 
-  if (!form.name.trim()) {
+  if (!nameTrim) {
     errors.name = 'Venue name is required.';
-  } else if (form.name.trim().length < 3) {
+  } else if (nameTrim.length < 3) {
     errors.name = 'Venue name must be at least 3 characters.';
-  } else if (form.name.trim().length > 100) {
+  } else if (nameTrim.length > 100) {
     errors.name = 'Venue name cannot exceed 100 characters.';
+  } else if (ONLY_DIGITS.test(nameTrim)) {
+    errors.name = 'Venue name cannot consist only of numbers.';
   }
 
   if (form.description.trim() && form.description.trim().length < 10) {
@@ -87,10 +91,13 @@ function validateVenueForm(form) {
     }
   }
 
-  if (!form.address.trim()) {
+  const addrTrim = form.address.trim();
+  if (!addrTrim) {
     errors.address = 'Address is required.';
-  } else if (form.address.trim().length < 5) {
+  } else if (addrTrim.length < 5) {
     errors.address = 'Please enter a complete address.';
+  } else if (ONLY_DIGITS.test(addrTrim)) {
+    errors.address = 'Address cannot consist only of numbers.';
   }
 
   if (!form.city.trim()) {
@@ -107,6 +114,18 @@ function validateVenueForm(form) {
 
   if (!form.types || !Array.isArray(form.types) || form.types.length < 1) {
     errors.types = 'Select at least one venue type.';
+  }
+
+  const amenityParts = String(form.amenities || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!amenityParts.length) {
+    errors.amenities = 'At least one amenity is required.';
+  }
+
+  if (newPhotoCount + existingPhotoCount < 1) {
+    errors.photos = 'At least one photo is required.';
   }
 
   return errors;
@@ -178,6 +197,7 @@ export default function AddVenueScreen({ navigation, route }) {
         mimeType: a.mimeType,
       }));
       setPhotos((p) => [...p, ...picked]);
+      setErrors((e) => (e.photos ? { ...e, photos: undefined } : e));
     }
   };
 
@@ -213,7 +233,10 @@ export default function AddVenueScreen({ navigation, route }) {
   };
 
   const onSubmit = async () => {
-    const validationErrors = validateVenueForm(form);
+    const validationErrors = validateVenueForm(form, {
+      newPhotoCount: photos.length,
+      existingPhotoCount: localExistingPhotos.length,
+    });
     setErrors(validationErrors);
     setApiError('');
     setSuccessMsg('');
@@ -422,18 +445,23 @@ export default function AddVenueScreen({ navigation, route }) {
         </View>
       </View>
 
-      <Text style={styles.label}>Amenities (comma separated)</Text>
+      <Text style={styles.label}>Amenities (comma separated) *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, errors.amenities && styles.inputError]}
         placeholder="WiFi, Parking, AC"
         value={form.amenities}
         onChangeText={(v) => update('amenities', v)}
       />
+      <FieldError message={errors.amenities} />
 
-      <Text style={styles.label}>Photos</Text>
-      <TouchableOpacity style={styles.uploadBtn} onPress={pickImages}>
+      <Text style={styles.label}>Photos *</Text>
+      <TouchableOpacity
+        style={[styles.uploadBtn, errors.photos && styles.uploadBtnError]}
+        onPress={pickImages}
+      >
         <Text style={styles.uploadText}>Pick Photos</Text>
       </TouchableOpacity>
+      <FieldError message={errors.photos} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: theme.spacing.sm }}>
         {isEditing && localExistingPhotos.map((p) => (
           <View key={p._id || Math.random().toString()} style={styles.imageWrapper}>
@@ -531,6 +559,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   uploadText: { color: theme.colors.primary, fontWeight: '600' },
+  uploadBtnError: {
+    borderColor: theme.colors.danger,
+  },
   preview: {
     width: 90,
     height: 90,

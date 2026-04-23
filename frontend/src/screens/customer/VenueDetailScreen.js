@@ -8,12 +8,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import theme from '../../theme';
 import { fetchVenue } from '../../api/venueService';
-import { formatVenueOpenHours, formatVenueTypes } from '../../utils/venueFormat';
+import {
+  formatVenueOpenHours,
+  formatVenueTypes,
+  formatVenueAddress,
+  venueMapsSearchUrl,
+} from '../../utils/venueFormat';
 import { fetchCatering } from '../../api/cateringService';
 import { fetchVenueReviews } from '../../api/reviewService';
 import CateringDetailModal from './CateringDetailModal';
@@ -227,10 +233,18 @@ export default function VenueDetailScreen({ route, navigation }) {
           )}
 
           <Text style={styles.section}>Location</Text>
-          <Text style={styles.body1}>
-            {venue.location?.address}, {venue.location?.city}
-            {venue.location?.state ? `, ${venue.location.state}` : ''}
-          </Text>
+          <Text style={styles.body1}>{formatVenueAddress(venue.location) || '—'}</Text>
+          {venueMapsSearchUrl(venue.location) ? (
+            <TouchableOpacity
+              style={styles.mapsLinkRow}
+              onPress={() => Linking.openURL(venueMapsSearchUrl(venue.location))}
+              accessibilityRole="link"
+              accessibilityLabel="Open location in maps"
+            >
+              <Ionicons name="map-outline" size={18} color={theme.colors.primary} />
+              <Text style={styles.mapsLinkText}>Open in maps</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {caterings.length > 0 && (
             <>
@@ -411,6 +425,13 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   body1: { color: theme.colors.text, lineHeight: 22 },
+  mapsLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: theme.spacing.sm,
+  },
+  mapsLinkText: { color: theme.colors.primary, fontWeight: '600', fontSize: 15 },
   amenityWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   amenityChip: {
     backgroundColor: '#EDE9FE',
