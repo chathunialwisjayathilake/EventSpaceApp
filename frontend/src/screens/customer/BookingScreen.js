@@ -236,7 +236,7 @@ export default function BookingScreen({ route, navigation }) {
   const bottomPad = theme.spacing.xl + theme.spacing.md;
 
   return (
-    <ScreenContainer edges={['left', 'right', 'bottom']}>
+    <ScreenContainer>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}

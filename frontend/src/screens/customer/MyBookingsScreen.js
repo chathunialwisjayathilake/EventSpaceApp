@@ -315,7 +315,7 @@ export default function MyBookingsScreen() {
   const listPadBottom = tabBarHeight + theme.spacing.lg;
 
   return (
-    <ScreenContainer edges={['left', 'right']}>
+    <ScreenContainer>
       <FlatList
         style={styles.flex}
         data={bookings}

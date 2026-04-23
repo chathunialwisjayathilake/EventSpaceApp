@@ -107,7 +107,7 @@ export default function ProfileScreen() {
   const bottomPad = tabBarHeight + theme.spacing.xl;
 
   return (
-    <ScreenContainer edges={['left', 'right']}>
+    <ScreenContainer>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}

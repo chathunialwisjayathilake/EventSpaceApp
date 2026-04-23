@@ -29,17 +29,11 @@ import ProfileScreen from '../screens/customer/ProfileScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-/** Invisible route target; tab press is intercepted to log out instead of navigating. */
 function LogoutTabPlaceholder() {
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
 }
 
-// Shared screen options for native-stack navigators.
-// NOTE: `statusBarColor` is intentionally omitted — on Android 15 edge-to-edge
-// (default in Expo 54 / react-native-screens v4) it is ignored, and the system
-// status bar is rendered transparent. We instead rely on `statusBarStyle` to
-// control icon color and let each screen paint its own background up to the
-// safe-area inset (see ScreenContainer + CustomerHomeScreen hero).
+
 const screenOptions = {
   headerStyle: {
     backgroundColor: theme.colors.primary,

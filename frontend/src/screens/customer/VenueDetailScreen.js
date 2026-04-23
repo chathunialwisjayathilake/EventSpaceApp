@@ -83,7 +83,7 @@ export default function VenueDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <ScreenContainer edges={['left', 'right', 'bottom']}>
+      <ScreenContainer>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
@@ -93,7 +93,7 @@ export default function VenueDetailScreen({ route, navigation }) {
 
   if (!venue) {
     return (
-      <ScreenContainer edges={['left', 'right', 'bottom']}>
+      <ScreenContainer>
         <View style={styles.center}>
           <Text style={styles.errorText}>{loadError || 'Venue not found.'}</Text>
         </View>
@@ -105,7 +105,7 @@ export default function VenueDetailScreen({ route, navigation }) {
     reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
   return (
-    <ScreenContainer edges={['left', 'right', 'bottom']} backgroundColor={theme.colors.background}>
+    <ScreenContainer backgroundColor={theme.colors.background}>
       <View style={styles.layout}>
         <ScrollView
           style={styles.scroll}

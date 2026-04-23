@@ -1,28 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import theme from '../theme';
 
-/**
- * Full-screen wrapper with safe-area insets (notches, home indicator).
- *
- * @param edges          Which sides get safe-area padding. Omit `top` when a
- *                       stack/tab header already handles the status bar inset,
- *                       or when the screen has its own hero that should extend
- *                       under the status bar.
- * @param statusBarStyle Optional StatusBar style override for screens that
- *                       don't have a navigator-managed header (e.g. auth
- *                       screens, Home, Dashboard). Pass 'dark' for light
- *                       backgrounds and 'light' for dark/colored backgrounds.
- *                       Leave undefined to let the navigator manage it.
- */
 export default function ScreenContainer({
   children,
   style,
-  edges = ['top', 'left', 'right', 'bottom'],
+  edges: edgesProp,
   backgroundColor = theme.colors.background,
   statusBarStyle,
 }) {
+  const headerHeight = useHeaderHeight();
+  const tabBarHeightCtx = React.useContext(BottomTabBarHeightContext);
+  const tabBarHeight = tabBarHeightCtx ?? 0;
+
+  const edges = useMemo(() => {
+    if (edgesProp != null) return edgesProp;
+    const next = ['left', 'right'];
+    if (headerHeight === 0) next.push('top');
+    if (tabBarHeight === 0) next.push('bottom');
+    return next;
+  }, [edgesProp, headerHeight, tabBarHeight]);
+
   return (
     <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor }, style]}>
       {statusBarStyle ? <StatusBar style={statusBarStyle} /> : null}

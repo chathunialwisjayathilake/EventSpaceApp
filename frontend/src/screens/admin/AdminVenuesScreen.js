@@ -149,7 +149,7 @@ export default function AdminVenuesScreen({ navigation }) {
   );
 
   return (
-    <ScreenContainer edges={['left', 'right', 'bottom']}>
+    <ScreenContainer>
     <View style={styles.container}>
       <FlatList
         style={styles.list}

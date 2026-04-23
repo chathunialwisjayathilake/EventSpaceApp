@@ -253,7 +253,7 @@ export default function AddVenueScreen({ navigation, route }) {
   };
 
   return (
-    <ScreenContainer edges={['left', 'right', 'bottom']}>
+    <ScreenContainer>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={{
@@ -284,7 +284,7 @@ export default function AddVenueScreen({ navigation, route }) {
       />
       <FieldError message={errors.name} />
 
-      <Text style={styles.label}>Description</Text>
+      <Text style={styles.label}>Description *</Text>
       <TextInput
         style={[styles.input, { height: 90 }, errors.description && styles.inputError]}
         multiline
@@ -406,17 +406,17 @@ export default function AddVenueScreen({ navigation, route }) {
             style={[styles.input, errors.city && styles.inputError]}
             value={form.city}
             onChangeText={(v) => update('city', v)}
-            placeholder="e.g. Mumbai"
+            placeholder="e.g. Colombo"
           />
           <FieldError message={errors.city} />
         </View>
         <View style={{ flex: 1, marginLeft: 6 }}>
-          <Text style={styles.label}>State</Text>
+          <Text style={styles.label}>Province</Text>
           <TextInput
             style={[styles.input, errors.state && styles.inputError]}
             value={form.state}
             onChangeText={(v) => update('state', v)}
-            placeholder="e.g. Maharashtra"
+            placeholder="e.g. Western Province"
           />
           <FieldError message={errors.state} />
         </View>

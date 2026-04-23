@@ -112,7 +112,7 @@ export default function AdminReviewsScreen() {
   const listPadBottom = theme.spacing.lg + theme.spacing.md;
 
   return (
-    <ScreenContainer edges={['left', 'right', 'bottom']}>
+    <ScreenContainer>
       <FlatList
         style={styles.list}
         data={reviews}
