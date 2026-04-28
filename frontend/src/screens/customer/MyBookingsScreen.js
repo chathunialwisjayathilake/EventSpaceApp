@@ -536,8 +536,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: '#F59E0B',
   },
   reviewCardHeader: {
     flexDirection: 'row',
